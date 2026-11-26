@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chỉnh độ nét video by VennLMAO</title>
+<title>Chỉnh độ nét video</title>
 <style>
 :root{--bg:#f4f5f7;--fg:#15171a;--card:#fff;--ac:#4f46e5;--mu:#6b7280;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111317;--fg:#eceef2;--card:#1b1e24;--ac:#818cf8;--mu:#9aa1ad}}
@@ -177,6 +177,19 @@ vid.onloadedmetadata=init;vid.onloadeddata=init;vid.oncanplay=init;
 $('pp').onclick=()=>{vid.muted=false;vid.paused?vid.play():vid.pause()};
 $('rs').onclick=()=>{vid.pause();vid.currentTime=0;setTimeout(draw,100)};
 
+let ac=null,ad=null;
+function audioTracks(){
+try{
+if(!ac){
+ac=new(window.AudioContext||window.webkitAudioContext)();
+const src=ac.createMediaElementSource(vid);
+ad=ac.createMediaStreamDestination();
+src.connect(ad);src.connect(ac.destination);
+}
+if(ac.state==='suspended')ac.resume();
+return ad.stream.getAudioTracks();
+}catch(e){return[]}
+}
 $('ex').onclick=async()=>{
 if(!ready||exporting)return;
 if(!window.MediaRecorder){$('st').textContent='Trình duyệt không hỗ trợ xuất video.';return}
@@ -184,10 +197,12 @@ exporting=true;$('ex').disabled=true;
 vid.pause();vid.currentTime=0;
 await new Promise(r=>setTimeout(r,200));
 const cs=cv.captureStream(30);
-try{
-const as=(vid.captureStream?vid.captureStream():vid.mozCaptureStream?vid.mozCaptureStream():null);
+const at=audioTracks();
+at.forEach(t=>cs.addTrack(t));
+if(!at.length){try{
+const as=vid.captureStream?vid.captureStream():null;
 if(as)as.getAudioTracks().forEach(t=>cs.addTrack(t));
-}catch(e){}
+}catch(e){}}
 const types=['video/mp4;codecs=avc1','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
 const mt=types.find(t=>MediaRecorder.isTypeSupported(t))||'';
 const rec=new MediaRecorder(cs,mt?{mimeType:mt,videoBitsPerSecond:8000000}:{videoBitsPerSecond:8000000});
