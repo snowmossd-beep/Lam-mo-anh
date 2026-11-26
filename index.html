@@ -56,7 +56,7 @@ a.dl{display:none;color:var(--ac);font-weight:600;text-align:center}
 const $=i=>document.getElementById(i);
 const cv=$('cv'),gl=cv.getContext('webgl',{preserveDrawingBuffer:true,antialias:false});
 const vid=document.createElement('video');
-vid.playsInline=true;vid.muted=false;vid.loop=false;vid.crossOrigin='anonymous';
+vid.playsInline=true;vid.setAttribute('playsinline','');vid.setAttribute('webkit-playsinline','');vid.preload='auto';vid.muted=true;vid.loop=false;
 let level=100,ready=false,exporting=false,url=null;
 
 const vs='attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
@@ -159,7 +159,11 @@ const f=e.target.files[0];if(!f)return;
 if(url)URL.revokeObjectURL(url);
 url=URL.createObjectURL(f);
 vid.src=url;ready=false;
-vid.onloadeddata=()=>{
+$('ph').style.display='block';$('ph').textContent='Đang tải video...';
+vid.onerror=()=>{$('ph').style.display='block';$('ph').textContent='Không đọc được video này (định dạng không hỗ trợ).'};
+vid.load();
+const init=()=>{
+if(ready||!vid.videoWidth)return;
 let w=vid.videoWidth,h=vid.videoHeight;
 const m=1920,sc=Math.min(1,m/Math.max(w,h));
 cv.width=Math.round(w*sc/2)*2;cv.height=Math.round(h*sc/2)*2;
@@ -168,8 +172,9 @@ ready=true;
 ['pp','rs','ex'].forEach(i=>$(i).disabled=false);
 vid.currentTime=0;draw();
 };
+vid.onloadedmetadata=init;vid.onloadeddata=init;vid.oncanplay=init;
 };
-$('pp').onclick=()=>{vid.paused?vid.play():vid.pause()};
+$('pp').onclick=()=>{vid.muted=false;vid.paused?vid.play():vid.pause()};
 $('rs').onclick=()=>{vid.pause();vid.currentTime=0;setTimeout(draw,100)};
 
 $('ex').onclick=async()=>{
@@ -192,6 +197,7 @@ const done=new Promise(r=>rec.onstop=r);
 const tick=setInterval(()=>{$('st').textContent='Đang xuất... '+Math.round(vid.currentTime/vid.duration*100)+'%'},300);
 vid.onended=()=>{if(rec.state!=='inactive')rec.stop()};
 rec.start(500);
+vid.muted=false;
 await vid.play();
 await done;
 clearInterval(tick);
